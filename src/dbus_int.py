@@ -38,9 +38,13 @@ class MusicManager:
         self.redisplay = False
         self.interface = None
         self.ini_player()
+    
+    def ts(self):
+        return os.get_terminal_size().columns
 
     def get_terminal_size(self):
-        return int(os.get_terminal_size().columns/3)
+        rc = min(os.get_terminal_size().columns, os.get_terminal_size().lines*4.933)
+        return int(rc/3)
 
     def ini_player(self):
         # thank u:
@@ -112,6 +116,7 @@ class MusicManager:
         if avg_r > t and avg_g > t and avg_b > t:
             ret_color = 'w'
         return ret_color
+    
 
     def read_and_convert_cover(self, color = False):
         # thank u:
@@ -125,12 +130,14 @@ class MusicManager:
             return
         if not color:
             cover = cover[:, :, 0]
-            W, H = cover.shape
+            H, W = cover.shape
         else:
-            W, H, _ = cover.shape
+            H, W, _ = cover.shape
+
+        if self.cols > W:
+            self.cols = W
         w = W/self.cols
         h = w/self.size
-
         rows = int(H/h)
         self.rows = rows
 

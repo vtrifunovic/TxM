@@ -52,7 +52,7 @@ def check_len(txt, bp):
 
 def display_with_figlet(stdscr, manager, color):
     xpad = int(manager.cols/5)
-    ypad = int(manager.cols/15)
+    ypad = int(manager.cols/8)
     xpos = xpad+manager.cols+xpad
     if not color:
         for i, line in enumerate(manager.cover_art):
@@ -67,15 +67,16 @@ def display_with_figlet(stdscr, manager, color):
                     curses.color_pair(terminal_colors[char])
                 )
     curses.curs_set(0)
-    song = check_len(manager.song, int(manager.cols/4))
-    artist = check_len(manager.artist, int(manager.cols/4))
-    ablum = check_len(manager.album, int(manager.cols/4))
+    #print_debug(stdscr, str(manager.ts()))
+    song = check_len(manager.song, int(manager.ts()/11))
+    artist = check_len(manager.artist, int(manager.ts()/11))
+    ablum = check_len(manager.album, int(manager.ts()/11))
     ypad -= 2
     ypad += print_figlet(
         stdscr, 
         list(pyfiglet.figlet_format(
             artist,
-            width=manager.get_terminal_size()*3-xpad-manager.cols-xpad)), 
+            width=1000)), 
         ypad, 
         xpos
     )
@@ -83,7 +84,7 @@ def display_with_figlet(stdscr, manager, color):
         stdscr, 
         list(pyfiglet.figlet_format(
             song, 
-            width=manager.get_terminal_size()*3-xpad-manager.cols-xpad)), 
+            width=1000)), 
         ypad, 
         xpos
     )
@@ -91,16 +92,16 @@ def display_with_figlet(stdscr, manager, color):
         stdscr, 
         list(pyfiglet.figlet_format(
             ablum, 
-            width=manager.get_terminal_size()*3-xpad-manager.cols-xpad)), 
+            width=1000)), 
         ypad, 
         xpos
     )
     print_figlet(stdscr, list(pyfiglet.figlet_format("<<")), manager.rows-2, xpos)
     if manager.playing == "Playing":
-        print_figlet(stdscr, list(pyfiglet.figlet_format("||")), manager.rows-2, xpos+10)
+        print_figlet(stdscr, list(pyfiglet.figlet_format("||")), manager.rows-2, manager.cols*2+int(xpad/2))
     else:
-        print_figlet(stdscr, list(pyfiglet.figlet_format(">")), manager.rows-2, xpos+10)
-    print_figlet(stdscr, list(pyfiglet.figlet_format(">>")), manager.rows-2, xpos+19)
+        print_figlet(stdscr, list(pyfiglet.figlet_format(">")), manager.rows-2, manager.cols*2+int(xpad/2))
+    print_figlet(stdscr, list(pyfiglet.figlet_format(">>")), manager.rows-2, manager.cols*3-xpad)
     manager.changed_state = False
     return
 
@@ -111,7 +112,7 @@ def display(stdscr, manager, color):
     manager.read_and_convert_cover(color=color)
     stdscr.clear()
     stdscr.nodelay(True)
-    if manager.cols > 50:
+    if manager.rows > 22:
         display_with_figlet(stdscr, manager, color)
         stdscr.refresh()
         return
@@ -171,8 +172,13 @@ def main(stdscr, manager, color):
         elif manager.get_terminal_size() != manager.cols:
             manager.cols = manager.get_terminal_size()
             manager.redisplay = True
-            display(stdscr, manager, color)
+            try:
+                display(stdscr, manager, color)
+            except:
+                stdscr.addstr(0, 0, "Refreshing..")
+                manager.redisplay = True
         else:
+            sleep(0.1) # limit cpu usage
             quit = keyboard_manager(stdscr, manager, color)
 
 def set_new_keybinds(binds):
