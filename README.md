@@ -1,6 +1,8 @@
 # TerminalMusic
 C version of Terminal Music that can be compiled into a binary
 
+I suffered through using the default dbus api so this thing wouldn't have any dependencies.
+
 ## Controls:
  - passing `--color` flag renders album covers using terminal colors
  - passing `--big_text` flag renders text with .k9 fonts (Walmart figlet)
