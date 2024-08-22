@@ -5,10 +5,11 @@ static void _return_line(Terminal_Char *c, FILE *font, char f){
     Line *l = (Line *)malloc(sizeof(Line));
     l->len = 0;
     l->lin = (char *)malloc(2);
+    l->lin[0] = f;
     while ((f=getc(font)) != '$'){
         if (f == '\n') break;
         if (f == EOF) FATAL_ERROR("Reached EOF in unexpacted area");
-        l->lin = realloc(l->lin, 3+l->len++);
+        l->lin = realloc(l->lin, 1+l->len++);
         l->lin[l->len-1] = f;
     }
     l->lin[l->len] = '\0';

@@ -74,7 +74,8 @@ void init_mega_colors(void){
 }
 
 // standard screen initializations along with custom color additions
-void init_screen(bool *color, bool *big_text){
+void init_screen(bool *color, char *font_path){
+    if (font_path[0] != '\n') font = load_font(font_path);
     initscr();
     noecho();
     use_default_colors();
@@ -87,10 +88,6 @@ void init_screen(bool *color, bool *big_text){
         }
     } else{
         *color = false;
-    }
-    if (big_text) font = load_font("fonts/small.k9");
-    if (!font){
-        *big_text = false;
     }
     // safe tea memory allocations init the char* memory slot
     alloc_mem_struct(&ri.album_str, "None", 1);
@@ -129,6 +126,7 @@ static void _render_section(char *text, int row_pad, int col_pad, int skip){
             val = val > 159 ? 31 : val; // if unkown char we set it to 31 for '?'
             val = val >= 0 ? val : 31;  // if unkown char we set it to 31 for '?'
             if (val > 0){
+                if (col_pad+col_jump+(int)strlen(font->c[val]->line[x]->lin) > ri.term_siz[1]) continue;
                 mvprintw(x+row_pad+skip, col_pad+col_jump, "%s", font->c[val]->line[x]->lin);
                 col_jump += strlen(font->c[val]->line[x]->lin);
             }
@@ -141,7 +139,7 @@ static void _render_section(char *text, int row_pad, int col_pad, int skip){
 }
 
 static void _render_big_text(DBus_Info info, int rows, int cols){
-    int row_pad = rows/2.5;
+    int row_pad = rows/10;
     int col_pad = cols/2+cols;
     int skip = 0;
     _render_section(info.album_str, row_pad, col_pad, skip);
@@ -153,7 +151,7 @@ static void _render_big_text(DBus_Info info, int rows, int cols){
     if (info.playing)
         _render_section("<<  ||  >>", row_pad, col_pad, skip);
     else
-        _render_section("<<  >   >>", row_pad, col_pad, skip);
+        _render_section("<<  >  >>", row_pad, col_pad, skip);
 }
 
 static void _regular_render(DBus_Info info, int rows, int cols){
@@ -171,7 +169,7 @@ static void _regular_render(DBus_Info info, int rows, int cols){
 }
 
 // diplays song name, album name, artist name
-void display_song_metadata(DBus_Info info, bool big_text){
+void display_song_metadata(DBus_Info info, char *font_path){
     int rows, cols = 0;
     ri.term_override = false;
     get_terminal_size(&rows, &cols, 2.5);
@@ -187,18 +185,16 @@ void display_song_metadata(DBus_Info info, bool big_text){
         }
     }
     clear();
-    if (big_text) _render_big_text(info, rows, cols);
+    if (font_path[0] != '\n') _render_big_text(info, rows, cols);
     else _regular_render(info, rows, cols);
     alloc_mem_struct(&ri.artist_str, info.artist_str, 2);
     alloc_mem_struct(&ri.album_str, info.album_str, 2);
-    ri.playing = info.playing;
     ri.re_render = true;
-    refresh();
+    ri.playing = info.playing;
 }
 
 // if not using color then calculates the proper char that corresponds
 // tho the grayscale value of the data
-// compare w/ chafa
 char get_ascii_value(uint8_t *data, int i, int j, int rows, int cols, int w){
     int tot = 0;
     int loops = 0;
@@ -260,8 +256,8 @@ void render_album_cover(DBus_Info info, bool color){
     int x_scale = w/cover_w; // w in python 
     int w_scale = x_scale/0.5; // h in python
     int rows = h/w_scale; // self.rows in python
-    int row_pad = cover_h/9;
-    int col_pad = cover_w/9;
+    int row_pad = cover_h/10;
+    int col_pad = cover_w/10;
 
     int cp = w/cover_w;
     int rp = h/rows;

@@ -5,8 +5,8 @@ I suffered through using the default dbus api so this thing wouldn't have any de
 
 ## Controls:
  - passing `--color` flag renders album covers using terminal colors
- - passing `--big_text` flag renders text with .k9 fonts (Walmart figlet)
-    - Will change this later to allow for font changing
+ - passing `--font=` flag renders text with .k9 fonts (Walmart figlet)
+    - Value passed in after font should be the path to the desired font
  - **config.cfg** file determines what keybinds to use. If deleted will be recreated
 
 ## External Tools

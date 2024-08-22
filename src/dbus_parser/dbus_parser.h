@@ -47,4 +47,4 @@ DBus_Info get_dbus_info(void);
 
 void get_dbus_player_instances(DBusConnection *conn);
 
-void check_info_and_send(KeyBinds *bind, DBusConnection *conn);
+void check_info_and_send(KeyBinds *bind, DBusConnection *con);

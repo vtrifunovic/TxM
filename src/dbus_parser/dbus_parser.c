@@ -200,7 +200,7 @@ void get_dbus_player_instances(DBusConnection *conn){
     }
     // setting destination to default DBus
     if (!dbus_message_set_destination(msg, "org.freedesktop.DBus"))
-        fprintf(stderr, "Fuck\n");
+        fprintf(stderr, "org.freedesktop.DBus not found\n");
     
     // sending the message with a reply block
     DBusMessage *reply;
