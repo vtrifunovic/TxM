@@ -1,32 +1,30 @@
 # TerminalMusic
-Python scripts that displays & controls the default Linux mediaplayer in the terminal. Script uses dbus to gather metadata about the music and to send control signals. Also uses ncurses to create the terminal UI.
+C version of Terminal Music that can be compiled into a binary
 
-## Libraries:
- - Internal: dbus, curses, re, os
- - External: PIL, numpy, pyfiglet
+I suffered through using the default dbus api so this thing wouldn't have any dependencies.
 
 ## Controls:
- - Defualt controls set to: 'p'=play/pause, 'o'=previous, '['=skip
- - This can be changed by passing a string to argument `--keybinds`
-    - Example: --keybinds 'jkl' would set 'j'=pause, 'k'=skip, 'l'=previous
- - Can switch from color to ASCII mode by passing argument `--no-color`
+ - passing `--color` flag renders album covers using terminal colors
+ - passing `--font=` flag renders text with .k9 fonts (Walmart figlet)
+    - Value passed in after font should be the path to the desired font
+ - **config.cfg** file determines what keybinds to use. If deleted will be recreated
 
-## Visuals:
-Mini text-mode with ASCII only cover (left), Color cover (right)
-<div align="left">
-    <img src="/screenshots/Screenshot from 2024-03-21 18-58-15.png" width="400px"</img> 
-    <img src="/screenshots/Screenshot from 2024-03-21 18-58-23.png" width="400px"</img> 
-</div>
+## External Tools
+**fig2k9.py** is a python script that converts figlet fonts (.flf) into my fonts (.k9). 
+Found it easier to do it this way. 
 
+## Fonts
+k9 fonts are simple files where `$` indicate the start of a charachter, next charachter is what the charachter is (this isn't necessary mainly for debugging). 
+The charachter is then created (can't use `$` in it), and `$$` indicates that the charachter has been completed. Charchters should be defined in their ascii order
+starting with space. Example of defining the 'a' charachter:
 
-Large/Figlet text-mode with ASCII only cover (left), Color cover 
-<div align="left">
-    <img src="/screenshots/Screenshot from 2024-03-21 18-57-23.png" width="400px"</img> 
-    <img src="/screenshots/Screenshot from 2024-03-21 18-57-13.png" width="400px"</img> 
-</div>
+```
+$a
+    ___
+   /   \
+  / / \ \
+ / /---\ \
+/_/     \_\$$
+```
 
-
-Full desktop view (yes I'm doing this to show off my rice)
-<div align="left">
-    <img src="/screenshots/Screenshot from 2024-03-21 18-56-26.png" width="800px"</img> 
-</div>
+Comments are defined with a `#` at the beginning of a line and end when the newline character is hit.
