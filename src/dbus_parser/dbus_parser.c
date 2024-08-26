@@ -120,7 +120,7 @@ void parse_dbus_signal(DBusMessageIter args, DBusMessageIter sub){
         args = sub;
         sub = tmp;
     }
-    //free(signal);
+    free(signal);
 }
 
 // if its a 97 which is a ??? we parse it otherwise safely return
@@ -216,6 +216,7 @@ void get_dbus_player_instances(DBusConnection *conn){
         dbus_message_iter_init(reply, &args);
         handle_message_variants(args);
     }
+    dbus_connection_flush(conn);
 }
 
 void send_dbus_info(DBusConnection *conn, char *message){
