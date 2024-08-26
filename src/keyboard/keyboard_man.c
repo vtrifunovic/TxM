@@ -3,7 +3,7 @@
 // re-creates the defaut config file & assigns keys to default ord values
 static void _make_and_return_defaults(KeyBinds *binds){
     FILE *fix = fopen("config.cfg", "w");
-    char text[] = "PLAY_PAUSE=p\nSKIP=[\nPREV=o\nQUIT=q\n";
+    char text[] = "PLAY=p\nSKIP=[\nPREV=o\nQUIT=q\n";
     fprintf(fix, text);
     fclose(fix);
     binds->quit = 113;

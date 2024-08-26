@@ -9,6 +9,7 @@ typedef struct render_info{
     char *album_str;
     char *artist_str;
     int term_siz[2];
+    int img_size;
 } Render_Info;
 
 typedef struct dbus_info{

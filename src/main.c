@@ -31,10 +31,10 @@ int main(int argc, char *argv[]){
     DBus_Info main_info;
     KeyBinds *binds = init_keybinds();
     while (!binds->exit){
-        dbus_connection_read_write_dispatch(connection, 500);
+        dbus_connection_read_write_dispatch(connection, 100);
         main_info = get_dbus_info();
-        display_song_metadata(main_info, font_name);
         render_album_cover(main_info, color);
+        display_song_metadata(main_info, font_name);
         handle_inputs(binds);
         check_info_and_send(binds, connection);
     }
