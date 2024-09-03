@@ -6,7 +6,7 @@ INCLUDE=-I/usr/include/dbus-1.0 -I/usr/lib/x86_64-linux-gnu/dbus-1.0/include  -I
 output: ncurses_display.o dbus_handler.o keyboard.o text.o compile clean
 
 compile:
-	$(CC) main.c dbus_handler.o ncurses_display.o keyboard.o text.o $(INCLUDE) $(LINK) $(CFLAGS) -o test
+	$(CC) main.c dbus_handler.o ncurses_display.o keyboard.o text.o $(INCLUDE) $(LINK) $(CFLAGS) -o txm
 
 dbus_handler.o:
 	$(CC) -c dbus_parser/dbus_parser.c $(INCLUDE) $(LINK) $(CFLAGS) -o $@

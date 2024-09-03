@@ -3,6 +3,8 @@
 #include <sys/ioctl.h>
 #include "../info_structs.h"
 
+#define SET_TITLE(name) {fprintf(stdout, "\033]0;%s\007", name);}
+
 void init_screen(bool *color, char *font_path);
 
 void handle_inputs(KeyBinds *binds);

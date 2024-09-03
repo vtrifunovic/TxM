@@ -27,8 +27,12 @@ int main(int argc, char *argv[]){
     }
     DBusConnection *connection = setup_dbus_connection("/org/mpris/MediaPlayer2", "interface=org.freedesktop.DBus.Properties");
     get_dbus_player_instances(connection);
+    SET_TITLE("TxM");
     init_screen(&color, font_name);
     DBus_Info main_info;
+    // asking for info here, then we just wait for updates in main loop
+    request_info_from_dbus(connection, "PlaybackStatus");
+    request_info_from_dbus(connection, "Metadata");
     KeyBinds *binds = init_keybinds();
     while (!binds->exit){
         dbus_connection_read_write_dispatch(connection, 100);
