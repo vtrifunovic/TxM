@@ -2,9 +2,12 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#define FATAL_ERROR(text) ({fprintf(stderr, "\e[1;31mFATAL ERROR:\e[0m %s\n", text); exit(0);})
+
 typedef struct render_info{
     bool re_render;
     bool term_override;
+    bool force_refresh;
     int playing;
     char *album_str;
     char *artist_str;

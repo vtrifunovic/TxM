@@ -10,7 +10,7 @@ static void _get_args(char *arg, bool *col, char **font){
         *col = true;
     }
     if (strncmp(arg, "--font=", 7)==0){
-        *font = (char *)malloc(strlen(arg)-7);
+        *font = (char *)realloc(*font, strlen(arg)-6);
         arg += 7;
         strcpy(*font, arg);
     }
@@ -28,12 +28,12 @@ int main(int argc, char *argv[]){
     DBusConnection *connection = setup_dbus_connection("/org/mpris/MediaPlayer2", "interface=org.freedesktop.DBus.Properties");
     get_dbus_player_instances(connection);
     SET_TITLE("TxM");
+    KeyBinds *binds = init_keybinds();
     init_screen(&color, font_name);
     DBus_Info main_info;
     // asking for info here, then we just wait for updates in main loop
     request_info_from_dbus(connection, "PlaybackStatus");
     request_info_from_dbus(connection, "Metadata");
-    KeyBinds *binds = init_keybinds();
     while (!binds->exit){
         dbus_connection_read_write_dispatch(connection, 100);
         main_info = get_dbus_info();

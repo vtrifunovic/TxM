@@ -1,8 +1,12 @@
 #include "keyboard_man.h"
 
 // re-creates the defaut config file & assigns keys to default ord values
-static void _make_and_return_defaults(KeyBinds *binds){
-    FILE *fix = fopen("config.cfg", "w");
+static void _make_and_return_defaults(KeyBinds *binds, char *env_path){
+    FILE *fix = fopen(env_path, "w");
+    if (!fix){
+        FATAL_ERROR("No .txm folder or local config file found!\nPlease use install script if building from source\n");
+        exit(0);
+    }
     char text[] = "PLAY=p\nSKIP=[\nPREV=o\nQUIT=q\n";
     fprintf(fix, text);
     fclose(fix);
@@ -38,10 +42,25 @@ static void _read_and_assign_binds(FILE *f, KeyBinds *binds){
 }
 
 KeyBinds *init_keybinds(void){
+    // tries to read local copy of txm config first
+    char fname[] = "txm_config.cfg";
     KeyBinds *binds = (KeyBinds*)malloc(sizeof(KeyBinds));
-    FILE *file = fopen("config.cfg", "r");
+    FILE *file = fopen(fname, "r");
     if (!file){
-        _make_and_return_defaults(binds);
+        // tries to read HOME copy of txm config 2nd
+        char txm_folder[] = "/.txm/";
+        char *env_file = malloc(strlen(fname) + strlen(getenv("HOME")) + strlen(txm_folder) + 2);
+        strcpy(env_file, getenv("HOME"));
+        strcat(env_file, txm_folder);
+        strcat(env_file, fname);
+        FILE *file2 = fopen(env_file, "r");
+        // if both fail, create config file in HOME/.txm directory
+        if (!file2){
+            _make_and_return_defaults(binds, env_file);
+            return binds;
+        }
+        _read_and_assign_binds(file2, binds);
+        fclose(file2);
         return binds;
     }
     _read_and_assign_binds(file, binds);
