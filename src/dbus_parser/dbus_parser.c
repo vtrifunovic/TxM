@@ -1,3 +1,5 @@
+// https://dbus.freedesktop.org/doc/dbus-specification.html
+// https://specifications.freedesktop.org/mpris-spec/latest/Player_Interface.html
 #include <string.h>
 #include "dbus_parser.h"
 
@@ -37,8 +39,6 @@ void parse_dbus_metadata(DBusMessageIter args, DBusMessageIter sub, char *signal
     char *key;
     // mpris metadata has standard amount you need to recurse into it
     // so just hardcoding these iterations in here
-    dbus_message_iter_next(&sub);
-    dbus_message_iter_recurse(&sub, &args);
     dbus_message_iter_recurse(&args, &sub);
     while (1){
         // loop over all the metadata values assigning them to proper
@@ -82,6 +82,8 @@ void handle_container_values(DBusMessageIter args, DBusMessageIter sub, char *si
             info.playing = false;
     // otherwise if its metadata we gotta go even deeper
     } else if (strcmp(signal, "Metadata") == 0){
+        dbus_message_iter_next(&sub);
+        dbus_message_iter_recurse(&sub, &args);
         parse_dbus_metadata(args, sub, signal);
     } else {
         while (dbus_message_iter_has_next(&sub)){
@@ -123,7 +125,26 @@ void parse_dbus_signal(DBusMessageIter args, DBusMessageIter sub){
     free(signal);
 }
 
-// if its a 97 which is a ??? we parse it otherwise safely return
+// handles replys to request_info_from_dbus
+void parse_replys(DBusMessageIter args, DBusMessageIter sub){
+    char *signal;
+    dbus_message_iter_recurse(&args, &sub);
+    signal = dbus_message_iter_get_signature(&sub);
+    // s for play/pause
+    // a for metadata
+    if (signal[0] == 's'){
+        dbus_message_iter_get_basic(&sub, &signal);
+        if (strcmp(signal, "Playing")==0)
+            info.playing = true;
+        else
+            info.playing = false;
+    } else {
+        parse_dbus_metadata(sub, args, signal);
+        return;
+    }
+}
+
+// if its a 97 which is an array we parse it otherwise safely return
 static void handle_message_variants(DBusMessageIter args){
     int type = dbus_message_iter_get_arg_type(&args);
     DBusMessageIter sub;
@@ -131,6 +152,8 @@ static void handle_message_variants(DBusMessageIter args){
         case 97:
             parse_dbus_signal(args, sub);
             return;
+        case 118:
+            parse_replys(args, sub);
         default:
             return;
     }
@@ -190,7 +213,7 @@ DBus_Info get_dbus_info(void){
     return info;
 }
 
-
+// gets exact mediaplayer2 instance that the audio is coming from
 void get_dbus_player_instances(DBusConnection *conn){
     DBusMessage *msg;
     // messaging main DBus to get all connections
@@ -219,6 +242,53 @@ void get_dbus_player_instances(DBusConnection *conn){
     dbus_connection_flush(conn);
 }
 
+// probing mediaplayer2 to get back play state and metadata
+void request_info_from_dbus(DBusConnection *conn, char *message){
+    DBusMessage *msg;
+    DBusMessageIter iter;
+    char *dbusPath = malloc(31);
+    strcpy(dbusPath, "org.mpris.MediaPlayer2.Player");
+    // yoinked from dbus-send
+
+    // dbus-send --print-reply --session 
+    // --dest=org.mpris.MediaPlayer2.firefox.instance2869 
+    // /org/mpris/MediaPlayer2 org.freedesktop.DBus.Properties.Get 
+    // string:'org.mpris.MediaPlayer2.Player' string:'PlaybackStatus'
+    msg = dbus_message_new_method_call(NULL, "/org/mpris/MediaPlayer2", "org.freedesktop.DBus.Properties", "Get");
+    dbus_message_set_auto_start(msg, TRUE);
+
+    if (msg == NULL){
+        fprintf(stderr, "Message failed to create\n");
+    }
+    // setting destination to mediaplayer instance
+    if (!dbus_message_set_destination(msg, info.player_interface))
+        fprintf(stderr, "%s interface not found\n", info.player_interface);
+
+    dbus_message_iter_init_append(msg, &iter);
+    // appending the mediaplayer2 variable we want to target
+    dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &dbusPath);
+    // appending the data we want to target from it
+    dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &message);
+    
+    // sending the message with a reply block
+    DBusError error;
+    dbus_error_init(&error);
+
+    DBusMessage *reply;
+    reply = dbus_connection_send_with_reply_and_block(conn, msg, 20, &error);
+    if (dbus_error_is_set(&error)){
+        fprintf(stderr, "Error: %s: %s\n", error.name, error.message);
+    } else if (reply){
+        DBusMessageIter args;
+        dbus_message_iter_init(reply, &args);
+        handle_message_variants(args);
+    } else {
+        fprintf(stderr, "No reply recieved");
+    }
+    dbus_connection_flush(conn);
+}
+
+// this is how pause/skip/prev is sent to mediaplayer
 void send_dbus_info(DBusConnection *conn, char *message){
     DBusMessage *msg;
     // yoinked from dbus-monitor
@@ -229,7 +299,7 @@ void send_dbus_info(DBusConnection *conn, char *message){
     }
     // setting destination to mediaplayer instance
     if (!dbus_message_set_destination(msg, info.player_interface))
-        fprintf(stderr, "Fuck\n");
+        fprintf(stderr, "%s interface not found\n", info.player_interface);
     
     // sending the message with a reply block
     DBusError error;

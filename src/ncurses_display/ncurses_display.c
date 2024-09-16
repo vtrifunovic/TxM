@@ -55,7 +55,7 @@ static void get_terminal_size(int *rows, int *cols, float divisor){
 }
 
 // initializes the color sqaures for album covers using the basic
-// ncurses color palet
+// ncurses color pallet
 void init_basic_colors(void){
     init_color(COLOR_BLACK, 0, 0, 0);
     init_pair(1, COLOR_BLACK, COLOR_BLACK);
@@ -109,6 +109,7 @@ void init_screen(bool *color, char *font_path){
     alloc_mem_struct(&ri.album_str, "None", 1);
     alloc_mem_struct(&ri.artist_str, "None", 1);
     ri.playing = 2;
+    ri.force_refresh = false;
     curs_set(0);
     timeout(1);
 }
@@ -255,23 +256,30 @@ void render_album_cover(DBus_Info info, bool color){
     ri.term_override = false; 
     int target_cols = _get_target_size(); // doing this here to get override variable
     // skips re-rendering if cover has already been rendered
-    if (!ri.term_override){
-        if (strcmp(ri.artist_str, info.artist_str) == 0 && strcmp(ri.album_str, info.album_str) == 0 && ri.playing == info.playing){
+    if (!ri.term_override && !ri.force_refresh){
+        if (strcmp(ri.artist_str, info.artist_str) == 0 && 
+            strcmp(ri.album_str, info.album_str) == 0 && 
+            ri.playing == info.playing){
             ri.re_render = false;
             return;
         }
     }
     if (!info.cover_path || strlen(info.cover_path) < 8){ // safe tea check for valid path
+        mvprintw(0, 0, "No valid cover path found!");
         return;
     }
     // Begin rendering
     ri.re_render = true;
     clear();
+    render_count++;
+    //mvprintw(1, 0, "Render count: %d ", render_count);
     int img_w, img_h, img_c = 0;
     info.cover_path += 7; // skip the file:/// part
     uint8_t *data = stbi_load(info.cover_path, &img_w, &img_h, &img_c, 3);
     if (!data){
         mvprintw(0, 0, "No data! path: %s", info.cover_path);
+        // forces screen refresh until cover is renderable
+        ri.force_refresh = true;
         refresh();
         return;
     }
@@ -281,8 +289,6 @@ void render_album_cover(DBus_Info info, bool color){
     float render_h = render_w/0.5; // self.size
     ri.img_size = img_h/render_h;
     int x1, x2, y1, y2 = 0;
-    render_count++;
-    //mvprintw(0, 0, "Render count: %d ", render_count);
     for (int i = 0; i < ri.img_size; i++){
         y1 = i*render_h;
         y2 = (i+1)*render_h;
@@ -303,6 +309,5 @@ void render_album_cover(DBus_Info info, bool color){
         }
     }
     free(data);
-    // sets to false so no rerendering until 
-    // display_song_metadata finds new data
+    ri.force_refresh = false;
 }

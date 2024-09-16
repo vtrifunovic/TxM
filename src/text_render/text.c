@@ -9,7 +9,7 @@ static void _return_line(Terminal_Char *c, FILE *font, char f){
     while ((f=getc(font)) != '$'){
         if (f == '\n') break;
         if (f == EOF) FATAL_ERROR("Reached EOF in unexpacted area");
-        l->lin = realloc(l->lin, 1+l->len++);
+        l->lin = realloc(l->lin, 2+l->len++);
         l->lin[l->len-1] = f;
     }
     l->lin[l->len] = '\0';
@@ -41,15 +41,26 @@ static void _load_char(Terminal_Font *fnt, FILE *font){
 }
 
 Terminal_Font *load_font(char *path){
+    if (strlen(path) == 0) FATAL_ERROR("Font not found");
     Terminal_Font *f = (Terminal_Font *)malloc(sizeof(Terminal_Font));
     f->name = (char *)malloc(strlen(path));
     f->c = (Terminal_Char **)malloc(sizeof(Terminal_Char)*1);
     f->max_lines = 0;
     f->cnt_chars = 0;
     strcpy(f->name, path);
+    // try to open local copy
     FILE *font = fopen(path, "r");
     if (!font){
-        FATAL_ERROR("Font not found");
+        // try to open HOME copy of font
+        char txm_folder[] = "/.txm/";
+        char *env_file = malloc(strlen(path) + strlen(getenv("HOME")) + strlen(txm_folder) + 2);
+        strcpy(env_file, getenv("HOME"));
+        strcat(env_file, txm_folder);
+        strcat(env_file, path);
+        FILE *font2 = fopen(env_file, "r");
+        if (!font2) // Doesn't exist, kill prog
+            FATAL_ERROR("Font not found");
+        font = font2;
     }
     char ch;
     int chars_loaded = 0;
@@ -65,6 +76,7 @@ Terminal_Font *load_font(char *path){
             }
         }
     }
+    fclose(font);
     return f;
 }
 
