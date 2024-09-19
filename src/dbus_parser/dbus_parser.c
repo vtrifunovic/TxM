@@ -69,6 +69,16 @@ bool startsWith(char *a, char *b){
     return false;
 }
 
+void _set_default_values(bool memexist, char **val, char *cpy){
+    if (memexist){
+        *val = realloc(*val, strlen(cpy));
+        strcpy(*val, cpy);
+        return;
+    } 
+    *val = malloc(strlen(cpy));
+    strcpy(*val, cpy);
+}
+
 // can you now see why default dbus is a pain?
 void handle_container_values(DBusMessageIter args, DBusMessageIter sub, char *signal){
     // if the signal value is playback we iter into it to get if song is playing
@@ -98,6 +108,16 @@ void handle_container_values(DBusMessageIter args, DBusMessageIter sub, char *si
             }
         }
     }
+    // if we dont find a valid cover path
+    // set it to default "unknown.png" image
+    if (!info.cover_path)
+        _set_default_values(0, &info.cover_path, info.unknown_path);
+    else if (strlen(info.cover_path)==0)
+        _set_default_values(1, &info.cover_path, info.unknown_path);
+    if (!info.album_str)
+        _set_default_values(0, &info.album_str, "Unknown");
+    else if (strlen(info.album_str) == 0)
+        _set_default_values(1, &info.album_str, "Unknown");
     return;
 }
 
@@ -179,6 +199,15 @@ DBusHandlerResult read_message(DBusConnection *connection, DBusMessage *msg, voi
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
+void _setup_unknown_path(void){
+    char txm_folder[] = "/.txm/unknown.png";
+    char skip[] = "file://";
+    info.unknown_path = malloc(strlen(skip) + strlen(getenv("HOME")) + strlen(txm_folder) + 2);
+    strcpy(info.unknown_path, skip);
+    strcat(info.unknown_path, getenv("HOME"));
+    strcat(info.unknown_path, txm_folder);
+}
+
 // sets up connection between this prog and mpris MediaPlayer2
 // MediaPlayer2 is the default audio connection
 DBusConnection *setup_dbus_connection(char *_path, char *_interface){
@@ -205,6 +234,7 @@ DBusConnection *setup_dbus_connection(char *_path, char *_interface){
     //dbus_bus_request_name(connection, "org.mpris.MediaPlayer2.txxm", DBUS_NAME_FLAG_REPLACE_EXISTING, &error);
     dbus_error_exit(error);
     dbus_connection_flush(connection);
+    _setup_unknown_path();
     return connection;
 }
 

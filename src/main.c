@@ -5,24 +5,40 @@
 #include "ncurses_display/ncurses_display.h"
 
 
-static void _get_args(char *arg, bool *col, char **font){
-    if (strcmp(arg, "--color")==0){
-        *col = true;
+static int _get_args(char *arg, bool *col, char **font){
+    if (strcmp(arg, "--nocolor")==0){
+        *col = false;
+        return 0;
     }
     if (strncmp(arg, "--font=", 7)==0){
         *font = (char *)realloc(*font, strlen(arg)-6);
         arg += 7;
         strcpy(*font, arg);
+        return 0;
     }
+    if (strcmp(arg, "--help")==0){
+        fprintf(stdout, "%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
+        "Usage: txm [OPTIONS]...",
+        "Display currently playing music in the terminal",
+        "Example: txm --fonts=small.k9",
+        "Options:\n  --nocolor\tDisables color, shows only ascii art",
+        "  --font\tSets a custom .k9 font.",
+        "\t\tFonts are loaded locally first then through .txm HOME folder.",
+        "\t\tNo spaces allowed. Enclose in quotes if path contains spaces.",
+        "  --help\tYou are here"
+        );
+        return 1;
+    }
+    return 0;
 }
 
 int main(int argc, char *argv[]){
-    bool color = false;
+    bool color = true;
     char *font_name = malloc(2);
     font_name[0] = '\n';
     if (argc > 1){
         for (int i = 1; i < argc; i++){
-            _get_args(argv[i], &color, &font_name);
+            if (_get_args(argv[i], &color, &font_name)) return 0;
         }
     }
     DBusConnection *connection = setup_dbus_connection("/org/mpris/MediaPlayer2", "interface=org.freedesktop.DBus.Properties");
@@ -37,6 +53,7 @@ int main(int argc, char *argv[]){
     while (!binds->exit){
         dbus_connection_read_write_dispatch(connection, 100);
         main_info = get_dbus_info();
+        //debug_dbus_info(main_info);
         render_album_cover(main_info, color);
         display_song_metadata(main_info, font_name);
         handle_inputs(binds);

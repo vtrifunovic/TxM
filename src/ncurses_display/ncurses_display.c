@@ -265,7 +265,7 @@ void render_album_cover(DBus_Info info, bool color){
         }
     }
     if (!info.cover_path || strlen(info.cover_path) < 8){ // safe tea check for valid path
-        mvprintw(0, 0, "No valid cover path found!");
+        mvprintw(0, 0, "No cover path found!\n");
         return;
     }
     // Begin rendering
@@ -274,7 +274,7 @@ void render_album_cover(DBus_Info info, bool color){
     render_count++;
     //mvprintw(1, 0, "Render count: %d ", render_count);
     int img_w, img_h, img_c = 0;
-    info.cover_path += 7; // skip the file:/// part
+    info.cover_path += 7; // skip the file:// part
     uint8_t *data = stbi_load(info.cover_path, &img_w, &img_h, &img_c, 3);
     if (!data){
         mvprintw(0, 0, "No data! path: %s", info.cover_path);

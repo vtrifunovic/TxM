@@ -4,7 +4,7 @@ C version of Terminal Music
 I suffered through using the default dbus api so this thing wouldn't requrie any external libraries.
 
 ## Controls:
- - passing `--color` flag renders album covers using terminal colors
+ - passing `--nocolor` flag disables colors and renders covers with ascii only
  - passing `--font=` flag renders text with .k9 fonts (Walmart figlet)
     - Value passed in after font should be the path to the desired font
     - Will attempt to read from local directory first and then HOME directory

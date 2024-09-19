@@ -22,6 +22,7 @@ typedef struct dbus_info{
     char *title_str;
     char *cover_path;
     char *player_interface;
+    char *unknown_path;
 } DBus_Info;
 
 typedef struct keybinds{
