@@ -18,7 +18,7 @@ Written as they are in the config file:
  - **NEXT**. Default: `[`, skips to next track if possible.
  - **PREV**. Default: `o`, skips to previous track if possible.
  - **QUIT**. Default: `q`, acts as back and exit button
- - **SWCH**. Default: `s`, switches between audio sources when available
+ - **SWCH**. Default: `s`, switches between players when available
  - **DEBG**. Default: `d`, when `--debug` flag is passed this will show program info
 
 ## External Tools

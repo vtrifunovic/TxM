@@ -48,6 +48,6 @@ DBusConnection *setup_dbus_connection(char *_path, char *_interface);
 
 DBus_Info get_dbus_info(void);
 
-void get_dbus_player_instances(DBusConnection *conn);
+void get_dbus_player_instances(DBusConnection *conn, bool keep);
 
 void check_info_and_send(KeyBinds *bind, DBusConnection *con);

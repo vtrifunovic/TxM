@@ -189,9 +189,9 @@ static void _regular_render(DBus_Info info, int target_cols, int cols){
     int row_pad = target_cols/8;
     int col_pad = row_pad + target_cols + row_pad;
     row_pad /= 2;
-    mvprintw(0+row_pad, col_pad, "%s", info.album_str);
+    mvprintw(0+row_pad, col_pad, "%s", info.title_str);
     mvprintw(2+row_pad, col_pad, "%s", info.artist_str);
-    mvprintw(4+row_pad, col_pad, "%s", info.title_str);
+    mvprintw(4+row_pad, col_pad, "%s", info.album_str);
     mvprintw(ri.img_size+row_pad-1, col_pad, "%s", "<<");
     if (info.playing)
         mvprintw(ri.img_size+row_pad-1, (cols-3+col_pad)/2, "%s", "||");
@@ -348,18 +348,19 @@ void render_dbus_sources(DBus_Info info, KeyBinds binds){
     char *if_name = _clean_if_name(info.player_interface);
     mvprintw(0, 0, "DBUS info:");
     mvprintw(1, 0, "\tSource:\t\t%s", if_name);
-    mvprintw(2, 0, "\tCover path:\t%s", info.cover_path);
-    mvprintw(3, 0, "\tAlbum:\t\t%s", info.album_str);
-    mvprintw(4, 0, "\tArtist\t\t%s", info.artist_str);
-    mvprintw(5, 0, "\tSong:\t\t%s", info.title_str);
-    mvprintw(6, 0, "\tPlaying:\t%d", info.playing);
-    mvprintw(7, 0, "\tAll sources:");
+    mvprintw(2, 0, "\tSource index:\t%d", info.if_curr_idx);
+    mvprintw(3, 0, "\tCover path:\t%s", info.cover_path);
+    mvprintw(4, 0, "\tAlbum:\t\t%s", info.album_str);
+    mvprintw(5, 0, "\tArtist\t\t%s", info.artist_str);
+    mvprintw(6, 0, "\tSong:\t\t%s", info.title_str);
+    mvprintw(7, 0, "\tPlaying:\t%d", info.playing);
+    mvprintw(8, 0, "\tAll sources:");
     int i = 0;
     for (; i < info.if_list_len; i++){
-        mvprintw(2*i+1+7, 0, "\t\tInterface name:\t%s", info.if_list[i]->name);
-        mvprintw(2*i+2+7, 0, "\t\tInterface id:\t%s", info.if_list[i]->id);
+        mvprintw(2*i+1+8, 0, "\t\tInterface name:\t%s", info.if_list[i]->name);
+        mvprintw(2*i+2+8, 0, "\t\tInterface id:\t%s", info.if_list[i]->id);
     }
-    i+=1;
+    i+=2;
     mvprintw(9+i, 0, "Render info:");
     mvprintw(10+i, 0, "\tTerm size:  %d rows, %d columns", ri.term_siz[0], ri.term_siz[1]);
     mvprintw(11+i, 0, "\tImage size: %d", ri.img_size);
@@ -367,10 +368,8 @@ void render_dbus_sources(DBus_Info info, KeyBinds binds){
     mvprintw(12+i, 0, "Keybind info:");
     mvprintw(13+i, 0, "\tQuit:   %c", binds.quit);
     mvprintw(14+i, 0, "\tPlay:   %c", binds.playpause);
-    mvprintw(15+i, 0, "\tNext:   %c", binds.next);
-    mvprintw(16+i, 0, "\tPrev:   %c", binds.prev);
-    mvprintw(17+i, 0, "\tSwitch: %c", binds.swch);
-    mvprintw(18+i, 0, "\tDebug:  %c", binds.debug);
+    mvprintw(15+i, 0, "\tNext:   %c\tPrev:   %c", binds.next, binds.prev);
+    mvprintw(16+i, 0, "\tSwitch: %c\tDebug:  %c", binds.swch, binds.debug);
     refresh();
     free(if_name);
     ri.force_refresh = false;
