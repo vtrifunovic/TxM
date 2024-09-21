@@ -1,5 +1,5 @@
 # TxM
-Terminal Music.
+Terminal Music. Attaches to dbus to get data about what the user is currently playing. Once installed it can be ran as `txm` from the terminal, and will open an ncurses window to display music info.
 
 I suffered through using the default dbus api so this thing wouldn't requrie any dependencies.
 
