@@ -82,6 +82,7 @@ void _set_value_to_default(bool memexist, char **val, char *cpy){
 void _add_interface_to_list(char *if_name){
     __if *ifx = (__if *)malloc(sizeof(__if));
     if (!info.if_list){
+        info.if_list_len++;
         info.if_list = (__if **)malloc(sizeof(__if));
     } else {
         info.if_list_len++;
@@ -201,14 +202,40 @@ static void handle_message_variants(DBusMessageIter args){
             return;
         case 118:
             parse_replys(args, sub);
+            return;
         default:
             return;
     }
 }
 
+static void _check_if_new_source(DBusConnection *connection, const char *sender, bool keep){
+    if (strcmp(sender, "fake.path.to.txm")!=0){
+        for (int i = 0; i < info.if_list_len; i++)
+           if (strcmp(info.if_list[i]->id, sender) == 0) return; // its in our list.. exit
+    }
+    // check all valid mpris media sources
+    for (int j = 0; j < info.if_list_len; j++){
+        if (info.if_list[j]->id) free(info.if_list[j]->id);
+        if (info.if_list[j]->name) free(info.if_list[j]->name);
+    }
+    info.if_list = realloc(info.if_list, 1);
+    info.if_list_len = 0;
+    get_dbus_player_instances(connection, keep);
+}
+
 // actual message handling
 DBusHandlerResult read_message(DBusConnection *connection, DBusMessage *msg, void *user_data){
-    if (strcmp(info.player_id, dbus_message_get_sender(msg)) != 0) return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+    // if user had no players open when program was opened
+    if (!info.player_id){
+        get_dbus_player_instances(connection, false);
+        return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+    }
+    // makes sure that signal is from current player being displayed
+    // also checks if new player gets opened when user is running program
+    if (strcmp(info.player_id, dbus_message_get_sender(msg)) != 0){
+        _check_if_new_source(connection, dbus_message_get_sender(msg), true);
+        return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+    }
     DBusMessageIter args;
     if (!dbus_message_iter_init(msg, &args)){
         fprintf(stderr, "Message has no args\n");
@@ -263,7 +290,8 @@ DBusConnection *setup_dbus_connection(char *_path, char *_interface){
     dbus_connection_flush(connection);
     _setup_unknown_path();
     // this is an init thing too so imma put it here
-    info.if_list_len = 1;
+    info.if_list_len = 0;
+    info.if_curr_idx = 0;
     return connection;
 }
 
@@ -311,7 +339,7 @@ static void request_info_from_dbus(DBusConnection *conn, char *message, char *ch
     dbus_error_init(&error);
 
     DBusMessage *reply;
-    reply = dbus_connection_send_with_reply_and_block(conn, msg, 20, &error);
+    reply = dbus_connection_send_with_reply_and_block(conn, msg, 200, &error);
     if (dbus_error_is_set(&error)){
         fprintf(stderr, "Error: %s: %s\n", error.name, error.message);
     } else if (reply){
@@ -331,7 +359,7 @@ static void request_info_from_dbus(DBusConnection *conn, char *message, char *ch
 
 
 // gets exact mediaplayer2 instance that the audio is coming from
-void get_dbus_player_instances(DBusConnection *conn){
+void get_dbus_player_instances(DBusConnection *conn, bool keep){
     DBusMessage *msg;
     // messaging main DBus to get all connections
     msg = dbus_message_new_method_call(NULL, "/org/freedesktop/DBus", "org.freedesktop.DBus", "ListNames");
@@ -346,7 +374,7 @@ void get_dbus_player_instances(DBusConnection *conn){
     DBusMessage *reply;
     DBusError error;
     dbus_error_init(&error);
-    reply = dbus_connection_send_with_reply_and_block(conn, msg, 20, &error);
+    reply = dbus_connection_send_with_reply_and_block(conn, msg, 200, &error);
     if (dbus_error_is_set(&error)){
         fprintf(stderr, "Error: %s: %s\n", error.name, error.message);
     }
@@ -355,21 +383,31 @@ void get_dbus_player_instances(DBusConnection *conn){
         DBusMessageIter args;
         dbus_message_iter_init(reply, &args);
         handle_message_variants(args);
+        if (info.if_list_len == 0)
+            return;
         // here we have our list, so lets send a hello to each of them to get their 
         // id and general data
         for (int x = 0; x < info.if_list_len; x++){
             request_info_from_dbus(conn, "PlaybackStatus", info.if_list[x]->name, x);
         }
+        // keep variable, keeps current index of player
+        // should always be true unless user is asking for a swap
+        if (keep){
+            for (int y = 0; y < info.if_list_len; y++){
+                if (info.player_interface && strcmp(info.player_interface, info.if_list[y]->name)==0)
+                    info.if_curr_idx = y;
+            }
+        }
         //_debug_if_list();
         // set last value to current player on init
-        info.player_interface = malloc(strlen(info.if_list[info.if_list_len-1]->name)+1);
-        info.player_id = malloc(strlen(info.if_list[info.if_list_len-1]->id)+1);
+        if (info.if_curr_idx >= info.if_list_len) info.if_curr_idx = 0;
+        info.player_interface = malloc(strlen(info.if_list[info.if_curr_idx]->name)+1);
+        info.player_id = malloc(strlen(info.if_list[info.if_curr_idx]->id)+1);
 
-        strcpy(info.player_interface, info.if_list[info.if_list_len-1]->name);
-        strcpy(info.player_id, info.if_list[info.if_list_len-1]->id);
+        strcpy(info.player_interface, info.if_list[info.if_curr_idx]->name);
+        strcpy(info.player_id, info.if_list[info.if_curr_idx]->id);
 
         request_info_from_dbus(conn, "Metadata", info.player_interface, -1);
-        info.if_curr_idx = info.if_list_len-1;
         //printf("%s %s", info.player_interface, info.if_list[0]->name);
     }
     dbus_connection_flush(conn);
@@ -400,10 +438,15 @@ void send_dbus_info(DBusConnection *conn, char *message){
 }
 
 void switch_dbus_interface(DBusConnection *conn){
+    // this is so dumb but works so well
+    // just re-add all media sources when switching, so if one gets removed, it wont switch to it
     info.if_curr_idx++;
-    if (info.if_curr_idx >= info.if_list_len) info.if_curr_idx = 0;
+    _check_if_new_source(conn, "fake.path.to.txm", false);
+    if (info.if_list_len == 0){
+        return;
+    }
     info.player_interface = realloc(info.player_interface, strlen(info.if_list[info.if_curr_idx]->name)+1);
-    info.player_id = realloc(info.player_id, strlen( info.if_list[info.if_curr_idx]->id)+1);
+    info.player_id = realloc(info.player_id, strlen(info.if_list[info.if_curr_idx]->id)+1);
     strcpy(info.player_interface, info.if_list[info.if_curr_idx]->name);
     strcpy(info.player_id, info.if_list[info.if_curr_idx]->id);
     request_info_from_dbus(conn, "PlaybackStatus", info.player_interface, -1);

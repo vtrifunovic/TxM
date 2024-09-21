@@ -24,7 +24,7 @@ static int _get_args(char *arg, bool *col, char **font, bool *debug){
         fprintf(stdout, "%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
         "Usage: txm [OPTIONS]...",
         "Display currently playing music in the terminal",
-        "Example: txm --fonts=small.k9",
+        "Example: txm --font=small.k9",
         "Options:\n  --nocolor\tDisables color, shows only ascii art",
         "  --font\tSets a custom .k9 font.",
         "\t\tFonts are loaded locally first then through .txm HOME folder.",
@@ -47,7 +47,7 @@ int main(int argc, char *argv[]){
         }
     }
     DBusConnection *connection = setup_dbus_connection("/org/mpris/MediaPlayer2", "interface=org.freedesktop.DBus.Properties");
-    get_dbus_player_instances(connection);
+    get_dbus_player_instances(connection, false);
     SET_TITLE("TxM");
     KeyBinds *binds = init_keybinds();
     init_screen(&color, font_name);
