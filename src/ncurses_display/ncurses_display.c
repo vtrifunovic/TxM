@@ -10,6 +10,7 @@ Render_Info ri;
 char g_char[] = {'x', '-', '?', ';', ' ', '.', ':', '=', '+'};
 int render_count;
 Terminal_Font *font;
+struct winsize w;
 
 // allocates memory for our render info data
 // if type 1 means data unallocated have to initialize
@@ -25,7 +26,6 @@ static void alloc_mem_struct(char **str, char *string, int type){
 }
 
 static int _get_target_size(void){
-    struct winsize w;
     ioctl(0, TIOCGWINSZ, &w);
     if (ri.term_siz[0] != w.ws_row || ri.term_siz[1] != w.ws_col){
         // https://man7.org/linux/man-pages/man3/resizeterm.3x.html
@@ -42,7 +42,6 @@ static int _get_target_size(void){
 // uses ioctl to get size of terminal in amount of rows & cols
 // uses divisor for formatting
 static void get_terminal_size(int *rows, int *cols, float divisor){
-    struct winsize w;
     ioctl(0, TIOCGWINSZ, &w);
     if (ri.term_siz[0] != w.ws_row || ri.term_siz[1] != w.ws_col){
         resizeterm(w.ws_row, w.ws_col);
@@ -117,14 +116,24 @@ void init_screen(bool *color, char *font_path){
 // if q then quit, later will include keybinds
 void handle_inputs(KeyBinds *binds){
     int ch = getch();
-    if (ch == binds->quit)
+    if (ch == binds->quit){
         binds->exit = true;
+        ri.force_refresh = true;
+    }
     if (ch == binds->playpause)
         binds->command = 1;
     if (ch == binds->next)
         binds->command = 2;
     if (ch == binds->prev)
         binds->command = 3;
+    if (ch == binds->debug){
+        ri.force_refresh = true;
+        binds->command = 4;
+    }
+    if (ch == binds->swch){
+        ri.force_refresh = true;
+        binds->command = 5;
+    }
 }
 
 // checks if data present in the dbus info struct
@@ -274,7 +283,9 @@ void render_album_cover(DBus_Info info, bool color){
     render_count++;
     //mvprintw(1, 0, "Render count: %d ", render_count);
     int img_w, img_h, img_c = 0;
-    info.cover_path += 7; // skip the file:// part
+    // if its a file:// path then we want to skip the file:// part
+    if (strncmp(info.cover_path, "file://", strlen("file://")) == 0)
+        info.cover_path += 7;
     uint8_t *data = stbi_load(info.cover_path, &img_w, &img_h, &img_c, 3);
     if (!data){
         mvprintw(0, 0, "No data! path: %s", info.cover_path);
@@ -309,5 +320,58 @@ void render_album_cover(DBus_Info info, bool color){
         }
     }
     free(data);
+    ri.force_refresh = false;
+}
+
+char *_clean_if_name(char *interface){
+    char *name = (char *)malloc(strlen(interface)+1);
+    strcpy(name, interface);
+    for (int i = 0; i < 23; i++){
+        for (int j = 1; j < (int)strlen(interface)+1; j++)
+            name[j-1] = name[j];
+    }
+    name = realloc(name, strlen(interface)-22);
+    int new_len = 0;
+    for (int x = 0; x < (int)strlen(name); x++){
+        if (name[x] == '.') break;
+        new_len += 1;
+    }
+    name[new_len] = 0;
+    name = realloc(name, new_len);
+    return name;
+}
+
+void render_dbus_sources(DBus_Info info, KeyBinds binds){
+    if (!ri.force_refresh)
+        return;
+    clear();
+    char *if_name = _clean_if_name(info.player_interface);
+    mvprintw(0, 0, "DBUS info:");
+    mvprintw(1, 0, "\tSource:\t\t%s", if_name);
+    mvprintw(2, 0, "\tCover path:\t%s", info.cover_path);
+    mvprintw(3, 0, "\tAlbum:\t\t%s", info.album_str);
+    mvprintw(4, 0, "\tArtist\t\t%s", info.artist_str);
+    mvprintw(5, 0, "\tSong:\t\t%s", info.title_str);
+    mvprintw(6, 0, "\tPlaying:\t%d", info.playing);
+    mvprintw(7, 0, "\tAll sources:");
+    int i = 0;
+    for (; i < info.if_list_len; i++){
+        mvprintw(2*i+1+7, 0, "\t\tInterface name:\t%s", info.if_list[i]->name);
+        mvprintw(2*i+2+7, 0, "\t\tInterface id:\t%s", info.if_list[i]->id);
+    }
+    i+=1;
+    mvprintw(9+i, 0, "Render info:");
+    mvprintw(10+i, 0, "\tTerm size:  %d rows, %d columns", ri.term_siz[0], ri.term_siz[1]);
+    mvprintw(11+i, 0, "\tImage size: %d", ri.img_size);
+    i += 1;
+    mvprintw(12+i, 0, "Keybind info:");
+    mvprintw(13+i, 0, "\tQuit:   %c", binds.quit);
+    mvprintw(14+i, 0, "\tPlay:   %c", binds.playpause);
+    mvprintw(15+i, 0, "\tNext:   %c", binds.next);
+    mvprintw(16+i, 0, "\tPrev:   %c", binds.prev);
+    mvprintw(17+i, 0, "\tSwitch: %c", binds.swch);
+    mvprintw(18+i, 0, "\tDebug:  %c", binds.debug);
+    refresh();
+    free(if_name);
     ri.force_refresh = false;
 }

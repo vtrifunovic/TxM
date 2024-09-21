@@ -69,7 +69,7 @@ bool startsWith(char *a, char *b){
     return false;
 }
 
-void _set_default_values(bool memexist, char **val, char *cpy){
+void _set_value_to_default(bool memexist, char **val, char *cpy){
     if (memexist){
         *val = realloc(*val, strlen(cpy));
         strcpy(*val, cpy);
@@ -77,6 +77,32 @@ void _set_default_values(bool memexist, char **val, char *cpy){
     } 
     *val = malloc(strlen(cpy));
     strcpy(*val, cpy);
+}
+
+void _add_interface_to_list(char *if_name){
+    __if *ifx = (__if *)malloc(sizeof(__if));
+    if (!info.if_list){
+        info.if_list = (__if **)malloc(sizeof(__if));
+    } else {
+        info.if_list_len++;
+        info.if_list = realloc(info.if_list, info.if_list_len*sizeof(__if));
+    }
+    ifx->name = (char *)malloc(strlen(if_name)+1);
+    strcpy(ifx->name, if_name);
+    info.if_list[info.if_list_len-1] = ifx;
+}
+
+static void _set_default_values(){
+    // if we dont find a valid cover path
+    // set it to default "unknown.png" image
+    if (!info.cover_path)
+        _set_value_to_default(0, &info.cover_path, info.unknown_path);
+    else if (strlen(info.cover_path)==0)
+        _set_value_to_default(1, &info.cover_path, info.unknown_path);
+    if (!info.album_str)
+        _set_value_to_default(0, &info.album_str, "Unknown");
+    else if (strlen(info.album_str) == 0)
+        _set_value_to_default(1, &info.album_str, "Unknown");
 }
 
 // can you now see why default dbus is a pain?
@@ -102,22 +128,14 @@ void handle_container_values(DBusMessageIter args, DBusMessageIter sub, char *si
             if (type == 118)
                 return;
             dbus_message_iter_get_basic(&sub, &signal);
+            // adding player interface to our struct
+            // add once to our list here
             if (startsWith(signal, "org.mpris.MediaPlayer2")){
-                info.player_interface = malloc(strlen(signal));
-                strcpy(info.player_interface, signal);
+                _add_interface_to_list(signal);
             }
         }
     }
-    // if we dont find a valid cover path
-    // set it to default "unknown.png" image
-    if (!info.cover_path)
-        _set_default_values(0, &info.cover_path, info.unknown_path);
-    else if (strlen(info.cover_path)==0)
-        _set_default_values(1, &info.cover_path, info.unknown_path);
-    if (!info.album_str)
-        _set_default_values(0, &info.album_str, "Unknown");
-    else if (strlen(info.album_str) == 0)
-        _set_default_values(1, &info.album_str, "Unknown");
+    _set_default_values();
     return;
 }
 
@@ -160,7 +178,16 @@ void parse_replys(DBusMessageIter args, DBusMessageIter sub){
             info.playing = false;
     } else {
         parse_dbus_metadata(sub, args, signal);
+        _set_default_values();
         return;
+    }
+}
+
+void _debug_if_list(){
+    if (!info.if_list) return;
+    for (int i = 0; i < info.if_list_len; i++){
+        fprintf(stdout, "Interface[%d] name: %s\n", i, info.if_list[i]->name);
+        fprintf(stdout, "\tid: %s\n", info.if_list[i]->id);
     }
 }
 
@@ -181,6 +208,7 @@ static void handle_message_variants(DBusMessageIter args){
 
 // actual message handling
 DBusHandlerResult read_message(DBusConnection *connection, DBusMessage *msg, void *user_data){
+    if (strcmp(info.player_id, dbus_message_get_sender(msg)) != 0) return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
     DBusMessageIter args;
     if (!dbus_message_iter_init(msg, &args)){
         fprintf(stderr, "Message has no args\n");
@@ -194,6 +222,7 @@ DBusHandlerResult read_message(DBusConnection *connection, DBusMessage *msg, voi
             handle_message_variants(args);
             dbus_message_iter_next(&args);
         }
+        //fprintf(stdout, "Sender: %s\n", dbus_message_get_sender(msg));
     }
     //debug_dbus_info(info);
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
@@ -201,10 +230,8 @@ DBusHandlerResult read_message(DBusConnection *connection, DBusMessage *msg, voi
 
 void _setup_unknown_path(void){
     char txm_folder[] = "/.txm/unknown.png";
-    char skip[] = "file://";
-    info.unknown_path = malloc(strlen(skip) + strlen(getenv("HOME")) + strlen(txm_folder) + 2);
-    strcpy(info.unknown_path, skip);
-    strcat(info.unknown_path, getenv("HOME"));
+    info.unknown_path = malloc(strlen(getenv("HOME")) + strlen(txm_folder) + 2);
+    strcpy(info.unknown_path, getenv("HOME"));
     strcat(info.unknown_path, txm_folder);
 }
 
@@ -235,6 +262,8 @@ DBusConnection *setup_dbus_connection(char *_path, char *_interface){
     dbus_error_exit(error);
     dbus_connection_flush(connection);
     _setup_unknown_path();
+    // this is an init thing too so imma put it here
+    info.if_list_len = 1;
     return connection;
 }
 
@@ -242,6 +271,64 @@ DBusConnection *setup_dbus_connection(char *_path, char *_interface){
 DBus_Info get_dbus_info(void){
     return info;
 }
+
+// probing mediaplayer2 to get back play state and metadata
+static void request_info_from_dbus(DBusConnection *conn, char *message, char *chosen_interface, int if_idx){
+    if (strcmp(message, "Metadata")==0 && info.title_str){
+        strcpy(info.album_str, "");
+        strcpy(info.title_str, "");
+        strcpy(info.cover_path, "");
+        strcpy(info.artist_str, "");
+    }
+    DBusMessage *msg;
+    DBusMessageIter iter;
+    char *dbusPath = malloc(31);
+    strcpy(dbusPath, "org.mpris.MediaPlayer2.Player");
+    // yoinked from dbus-send
+
+    // dbus-send --print-reply --session 
+    // --dest=org.mpris.MediaPlayer2.firefox.instance2869 
+    // /org/mpris/MediaPlayer2 org.freedesktop.DBus.Properties.Get 
+    // string:'org.mpris.MediaPlayer2.Player' string:'PlaybackStatus'
+    msg = dbus_message_new_method_call(NULL, "/org/mpris/MediaPlayer2", "org.freedesktop.DBus.Properties", "Get");
+    dbus_message_set_auto_start(msg, TRUE);
+
+    if (msg == NULL){
+        fprintf(stderr, "Message failed to create\n");
+    }
+    // setting destination to mediaplayer instance
+    if (!dbus_message_set_destination(msg, chosen_interface))
+        fprintf(stderr, "%s interface not found\n", chosen_interface);
+
+    dbus_message_iter_init_append(msg, &iter);
+    // appending the mediaplayer2 variable we want to target
+    dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &dbusPath);
+    // appending the data we want to target from it
+    dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &message);
+    
+    // sending the message with a reply block
+    DBusError error;
+    dbus_error_init(&error);
+
+    DBusMessage *reply;
+    reply = dbus_connection_send_with_reply_and_block(conn, msg, 20, &error);
+    if (dbus_error_is_set(&error)){
+        fprintf(stderr, "Error: %s: %s\n", error.name, error.message);
+    } else if (reply){
+        DBusMessageIter args;
+        dbus_message_iter_init(reply, &args);
+        if (if_idx >= 0){
+            const char *sender_name = dbus_message_get_sender(reply);
+            info.if_list[if_idx]->id = malloc(strlen(sender_name)+1);
+            strcpy(info.if_list[if_idx]->id, sender_name);
+        }
+        handle_message_variants(args);
+    } else {
+        fprintf(stderr, "No reply recieved");
+    }
+    dbus_connection_flush(conn);
+}
+
 
 // gets exact mediaplayer2 instance that the audio is coming from
 void get_dbus_player_instances(DBusConnection *conn){
@@ -268,52 +355,22 @@ void get_dbus_player_instances(DBusConnection *conn){
         DBusMessageIter args;
         dbus_message_iter_init(reply, &args);
         handle_message_variants(args);
-    }
-    dbus_connection_flush(conn);
-}
+        // here we have our list, so lets send a hello to each of them to get their 
+        // id and general data
+        for (int x = 0; x < info.if_list_len; x++){
+            request_info_from_dbus(conn, "PlaybackStatus", info.if_list[x]->name, x);
+        }
+        //_debug_if_list();
+        // set last value to current player on init
+        info.player_interface = malloc(strlen(info.if_list[info.if_list_len-1]->name)+1);
+        info.player_id = malloc(strlen(info.if_list[info.if_list_len-1]->id)+1);
 
-// probing mediaplayer2 to get back play state and metadata
-void request_info_from_dbus(DBusConnection *conn, char *message){
-    DBusMessage *msg;
-    DBusMessageIter iter;
-    char *dbusPath = malloc(31);
-    strcpy(dbusPath, "org.mpris.MediaPlayer2.Player");
-    // yoinked from dbus-send
+        strcpy(info.player_interface, info.if_list[info.if_list_len-1]->name);
+        strcpy(info.player_id, info.if_list[info.if_list_len-1]->id);
 
-    // dbus-send --print-reply --session 
-    // --dest=org.mpris.MediaPlayer2.firefox.instance2869 
-    // /org/mpris/MediaPlayer2 org.freedesktop.DBus.Properties.Get 
-    // string:'org.mpris.MediaPlayer2.Player' string:'PlaybackStatus'
-    msg = dbus_message_new_method_call(NULL, "/org/mpris/MediaPlayer2", "org.freedesktop.DBus.Properties", "Get");
-    dbus_message_set_auto_start(msg, TRUE);
-
-    if (msg == NULL){
-        fprintf(stderr, "Message failed to create\n");
-    }
-    // setting destination to mediaplayer instance
-    if (!dbus_message_set_destination(msg, info.player_interface))
-        fprintf(stderr, "%s interface not found\n", info.player_interface);
-
-    dbus_message_iter_init_append(msg, &iter);
-    // appending the mediaplayer2 variable we want to target
-    dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &dbusPath);
-    // appending the data we want to target from it
-    dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &message);
-    
-    // sending the message with a reply block
-    DBusError error;
-    dbus_error_init(&error);
-
-    DBusMessage *reply;
-    reply = dbus_connection_send_with_reply_and_block(conn, msg, 20, &error);
-    if (dbus_error_is_set(&error)){
-        fprintf(stderr, "Error: %s: %s\n", error.name, error.message);
-    } else if (reply){
-        DBusMessageIter args;
-        dbus_message_iter_init(reply, &args);
-        handle_message_variants(args);
-    } else {
-        fprintf(stderr, "No reply recieved");
+        request_info_from_dbus(conn, "Metadata", info.player_interface, -1);
+        info.if_curr_idx = info.if_list_len-1;
+        //printf("%s %s", info.player_interface, info.if_list[0]->name);
     }
     dbus_connection_flush(conn);
 }
@@ -342,6 +399,17 @@ void send_dbus_info(DBusConnection *conn, char *message){
     dbus_connection_flush(conn);
 }
 
+void switch_dbus_interface(DBusConnection *conn){
+    info.if_curr_idx++;
+    if (info.if_curr_idx >= info.if_list_len) info.if_curr_idx = 0;
+    info.player_interface = realloc(info.player_interface, strlen(info.if_list[info.if_curr_idx]->name)+1);
+    info.player_id = realloc(info.player_id, strlen( info.if_list[info.if_curr_idx]->id)+1);
+    strcpy(info.player_interface, info.if_list[info.if_curr_idx]->name);
+    strcpy(info.player_id, info.if_list[info.if_curr_idx]->id);
+    request_info_from_dbus(conn, "PlaybackStatus", info.player_interface, -1);
+    request_info_from_dbus(conn, "Metadata", info.player_interface, -1);
+}
+
 void check_info_and_send(KeyBinds *binds, DBusConnection *conn){
     if (binds->command == 0) // no message to send
         return;
@@ -351,5 +419,7 @@ void check_info_and_send(KeyBinds *binds, DBusConnection *conn){
         send_dbus_info(conn, "Next");
     if (binds->command == 3)
         send_dbus_info(conn, "Previous");
+    if (binds->command == 5)
+        switch_dbus_interface(conn);
     binds->command = 0;
 }
