@@ -1,14 +1,25 @@
 # TxM
-C version of Terminal Music
+Terminal Music.
 
-I suffered through using the default dbus api so this thing wouldn't requrie any external libraries.
+I suffered through using the default dbus api so this thing wouldn't requrie any dependencies.
 
-## Controls:
- - passing `--color` flag renders album covers using terminal colors
- - passing `--font=` flag renders text with .k9 fonts (Walmart figlet)
+## CLI Flags:
+ - `--nocolor` flag disables colors and renders covers with ascii only
+ - `--font=` flag renders text with .k9 fonts (Walmart figlet)
     - Value passed in after font should be the path to the desired font
     - Will attempt to read from local directory first and then HOME directory
+ - `--help` flag will print help screen and exit
+ - `--debug` flag along with debug key allows access to debug screen to see program data
  - **config.cfg** file determines what keybinds to use. If deleted will be recreated
+
+## Keyboard Binds:
+Written as they are in the config file:
+ - **PLAY**. Default: `p`, acts as play/pause button
+ - **NEXT**. Default: `[`, skips to next track if possible.
+ - **PREV**. Default: `o`, skips to previous track if possible.
+ - **QUIT**. Default: `q`, acts as back and exit button
+ - **SWCH**. Default: `s`, switches between audio sources when available
+ - **DEBG**. Default: `d`, when `--debug` flag is passed this will show program info
 
 ## External Tools
 **fig2k9.py** is a python script that converts figlet fonts (.flf) into my fonts (.k9). 

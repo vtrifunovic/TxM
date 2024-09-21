@@ -7,13 +7,15 @@ static void _make_and_return_defaults(KeyBinds *binds, char *env_path){
         FATAL_ERROR("No .txm folder or local config file found!\nPlease use install script if building from source\n");
         exit(0);
     }
-    char text[] = "PLAY=p\nSKIP=[\nPREV=o\nQUIT=q\n";
+    char text[] = "PLAY=p\nSKIP=[\nPREV=o\nQUIT=q\nSWCH=s\nDEBG=d\n";
     fprintf(fix, text);
     fclose(fix);
     binds->quit = 113;
     binds->playpause = 112;
     binds->prev = 111;
     binds->next = 91;
+    binds->debug = 100;
+    binds->swch = 115;
     binds->exit = false;
     binds->command = 0;
 }
@@ -38,6 +40,10 @@ static void _read_and_assign_binds(FILE *f, KeyBinds *binds){
             binds->prev = getc(f);
         if (strcmp(buf, "QUIT=")==0)
             binds->quit = getc(f);
+        if (strcmp(buf, "SWCH=")==0)
+            binds->swch = getc(f);
+        if (strcmp(buf, "DEBG=")==0)
+            binds->debug = getc(f);
     }
 }
 
