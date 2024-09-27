@@ -1,8 +1,8 @@
 # TxM
-Terminal Music. Attaches to dbus to get data about what the user is currently playing. Once installed it can be ran as `txm` from the terminal, and will open an ncurses window to display music info.
-
+Terminal Music.
+![txm](./src/assets/txm_example.png)
 I suffered through using the default dbus api so this thing wouldn't requrie any dependencies.
-
+![txm2](./src/assets/txm_example_2.png)
 ## CLI Flags:
  - `--nocolor` flag disables colors and renders covers with ascii only
  - `--font=` flag renders text with .k9 fonts (Walmart figlet)
@@ -10,7 +10,7 @@ I suffered through using the default dbus api so this thing wouldn't requrie any
     - Will attempt to read from local directory first and then HOME directory
  - `--help` flag will print help screen and exit
  - `--debug` flag along with debug key allows access to debug screen to see program data
- - **config.cfg** file determines what keybinds to use. If deleted will be recreated
+ - **txm_config.cfg** file determines what keybinds to use. If deleted will be recreated
 
 ## Keyboard Binds:
 Written as they are in the config file:
