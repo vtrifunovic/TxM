@@ -20,7 +20,7 @@ static void alloc_mem_struct(char **str, char *string, int type){
         *str = (char *)malloc(strlen(string)+1);
     else if (type == 2)
         *str = (char *)realloc(*str, strlen(string)+1);
-    else // god help you if you somehow get here
+    else
         exit(0);
     strcpy(*str, string);
 }
@@ -172,16 +172,17 @@ static void _render_big_text(DBus_Info info, int target_cols, int cols){
     int skip = 0;
     skip += _render_section(info.title_str, row_pad, col_pad, skip);
     skip += _render_section(info.artist_str, row_pad, col_pad, skip);
-    (void)_render_section(info.album_str, row_pad, col_pad, skip);
-    skip = 0 - font->max_lines;
+    skip += _render_section(info.album_str, row_pad, col_pad, skip);
+    if (row_pad+ri.img_size-font->max_lines > row_pad+skip)
+        skip = ri.img_size-font->max_lines;
     if (info.playing){
-        (void)_render_section("<<", row_pad+ri.img_size, col_pad, skip);
-        (void)_render_section("||", row_pad+ri.img_size, (col_pad+cols-10)/2, skip);
-        (void)_render_section(">>", row_pad+ri.img_size, cols-10, skip);
+        (void)_render_section("<<", row_pad, col_pad, skip);
+        (void)_render_section("||", row_pad, (col_pad+cols-10)/2, skip);
+        (void)_render_section(">>", row_pad, cols-10, skip);
     } else {
-        (void)_render_section("<<", row_pad+ri.img_size, col_pad, skip);
-        (void)_render_section(">", row_pad+ri.img_size, (col_pad+cols-10)/2, skip);
-        (void)_render_section(">>", row_pad+ri.img_size, cols-10, skip);
+        (void)_render_section("<<", row_pad, col_pad, skip);
+        (void)_render_section(">", row_pad, (col_pad+cols-10)/2, skip);
+        (void)_render_section(">>", row_pad, cols-10, skip);
     }
 }
 
@@ -192,12 +193,16 @@ static void _regular_render(DBus_Info info, int target_cols, int cols){
     mvprintw(0+row_pad, col_pad, "%s", info.title_str);
     mvprintw(2+row_pad, col_pad, "%s", info.artist_str);
     mvprintw(4+row_pad, col_pad, "%s", info.album_str);
-    mvprintw(ri.img_size+row_pad-1, col_pad, "%s", "<<");
-    if (info.playing)
-        mvprintw(ri.img_size+row_pad-1, (cols-3+col_pad)/2, "%s", "||");
+    if (ri.img_size+row_pad-2 > 4+row_pad)
+        row_pad = ri.img_size+row_pad-1;
     else
-        mvprintw(ri.img_size+row_pad-1, (cols-3+col_pad)/2, "%s", ">");
-    mvprintw(ri.img_size+row_pad-1, cols-3, "%s", ">>");
+        row_pad = row_pad + 6;
+    mvprintw(row_pad, col_pad, "%s", "<<");
+    if (info.playing)
+        mvprintw(row_pad, (cols-3+col_pad)/2, "%s", "||");
+    else
+        mvprintw(row_pad, (cols-3+col_pad)/2, "%s", ">");
+    mvprintw(row_pad, cols-3, "%s", ">>");
 }
 
 // diplays song name, album name, artist name
