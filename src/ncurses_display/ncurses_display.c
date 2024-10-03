@@ -152,7 +152,10 @@ static int _render_section(char *text, int row_pad, int col_pad, int skip){
             val = val > 159 ? 31 : val; // if unkown char we set it to 31 for '?'
             val = val >= 0 ? val : 31;  // if unkown char we set it to 31 for '?'
             if (val > 0){
-                if (col_pad+col_jump+(int)strlen(font->c[val]->line[x]->lin) > ri.term_siz[1]) continue;
+                if (col_pad+col_jump+(int)strlen(font->c[val]->line[x]->lin) > ri.term_siz[1]){ 
+                    col_jump += strlen(font->c[val]->line[x]->lin);
+                    continue;
+                }
                 mvprintw(x+row_pad+skip, col_pad+col_jump, "%s", font->c[val]->line[x]->lin);
                 col_jump += strlen(font->c[val]->line[x]->lin);
             }
@@ -186,17 +189,44 @@ static void _render_big_text(DBus_Info info, int target_cols, int cols){
     }
 }
 
+static bool _check_regular_overflow(char *compare_str, int col_pad){
+    return ((int)strlen(compare_str)+col_pad > ri.term_siz[1]);
+}
+
 static void _regular_render(DBus_Info info, int target_cols, int cols){
     int row_pad = target_cols/8;
     int col_pad = row_pad + target_cols + row_pad;
     row_pad /= 2;
-    mvprintw(0+row_pad, col_pad, "%s", info.title_str);
-    mvprintw(2+row_pad, col_pad, "%s", info.artist_str);
-    mvprintw(4+row_pad, col_pad, "%s", info.album_str);
+    char *tmp_str = (char *)malloc(1);
+    if (_check_regular_overflow(info.title_str, col_pad)){
+        tmp_str = realloc(tmp_str, ri.term_siz[1]-col_pad);
+        strncpy(tmp_str, info.title_str, ri.term_siz[1]-col_pad-2);
+        tmp_str[ri.term_siz[1]-col_pad-2] = '\0';
+        mvprintw(0+row_pad, col_pad, "%s", tmp_str);
+    } else {
+        mvprintw(0+row_pad, col_pad, "%s", info.title_str);
+    }
+    if (_check_regular_overflow(info.artist_str, col_pad)){
+        tmp_str = realloc(tmp_str, ri.term_siz[1]-col_pad);
+        strncpy(tmp_str, info.artist_str, ri.term_siz[1]-col_pad-2);
+        tmp_str[ri.term_siz[1]-col_pad-2] = '\0';
+        mvprintw(2+row_pad, col_pad, "%s", tmp_str);
+    } else {
+        mvprintw(2+row_pad, col_pad, "%s", info.artist_str);
+    }
+    if (_check_regular_overflow(info.album_str, col_pad)){
+        tmp_str = realloc(tmp_str, ri.term_siz[1]-col_pad);
+        strncpy(tmp_str, info.album_str, ri.term_siz[1]-col_pad-2);
+        tmp_str[ri.term_siz[1]-col_pad-2] = '\0';
+        mvprintw(4+row_pad, col_pad, "%s", tmp_str);
+    } else {
+        mvprintw(4+row_pad, col_pad, "%s", info.album_str);
+    }
     if (ri.img_size+row_pad-2 > 4+row_pad)
         row_pad = ri.img_size+row_pad-1;
     else
         row_pad = row_pad + 6;
+    free(tmp_str);
     mvprintw(row_pad, col_pad, "%s", "<<");
     if (info.playing)
         mvprintw(row_pad, (cols-3+col_pad)/2, "%s", "||");
