@@ -380,6 +380,11 @@ void render_dbus_sources(DBus_Info info, KeyBinds binds){
     if (!ri.force_refresh)
         return;
     clear();
+    if (safety_check(info)){
+        mvprintw(0, 0, "No DBUS info to print... start playing something :)");
+        refresh();
+        return;
+    }
     char *if_name = _clean_if_name(info.player_interface);
     mvprintw(0, 0, "DBUS info:");
     mvprintw(1, 0, "\tSource:\t\t%s", if_name);
