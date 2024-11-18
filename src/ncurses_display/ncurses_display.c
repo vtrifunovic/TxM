@@ -294,7 +294,9 @@ int get_avg_color(uint8_t *data, int x1, int x2, int y1, int y2, int w){
 // renders album cover
 void render_album_cover(DBus_Info info, bool color){
     if (safety_check(info)){ // make sure theres info in dbus info struct
+        clear();
         mvprintw(0, 0, "No info");
+        refresh();
         return;
     }
     ri.term_override = false; 
@@ -379,12 +381,12 @@ char *_clean_if_name(char *interface){
 void render_dbus_sources(DBus_Info info, KeyBinds binds){
     if (!ri.force_refresh)
         return;
-    clear();
     if (safety_check(info)){
         mvprintw(0, 0, "No DBUS info to print... start playing something :)");
         refresh();
         return;
     }
+    clear();
     char *if_name = _clean_if_name(info.player_interface);
     mvprintw(0, 0, "DBUS info:");
     mvprintw(1, 0, "\tSource:\t\t%s", if_name);
